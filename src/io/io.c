@@ -5,8 +5,14 @@
  */
 #include "io/io.h"
 #include <stdlib.h>
-void io_init(IoBus *bus) { bus->devices = NULL; bus->count = 0; }
-void io_destroy(IoBus *bus) { free(bus->devices); io_init(bus); }
+void io_init(IoBus *bus) { 
+    bus->devices = NULL; 
+    bus->count = 0; 
+}
+void io_destroy(IoBus *bus) { 
+    free(bus->devices); 
+    io_init(bus); 
+}
 bool io_register(IoBus *bus, IoDevice device) {
     IoDevice *next = realloc(bus->devices, (bus->count + 1) * sizeof(*next));
     if (!next) return false; bus->devices = next; bus->devices[bus->count++] = device; return true;
@@ -16,5 +22,20 @@ static IoDevice *find(IoBus *bus, u16 port) {
         if (port >= bus->devices[i].first && port <= bus->devices[i].last) return &bus->devices[i];
     return NULL;
 }
-u8 io_read8(IoBus *bus, u16 port) { IoDevice *d = find(bus, port); return d && d->read ? d->read(d->opaque, port) : 0xff; }
-void io_write8(IoBus *bus, u16 port, u8 value) { IoDevice *d = find(bus, port); if (d && d->write) d->write(d->opaque, port, value); }
+/*
+    Ports to stub from the start
+    Port	        Purpose	            Behavior
+    0x80	        I/O delay	        ignore writes
+    0x92	        A20 fast gate	    accept writes; A20 always on
+    0x3D4/0x3D5	    VGA CRTC (cursor)	store registers, update cursor
+    0x3F8-0x3FF	    COM1	            absent or log to stdout
+    0xCF8/0xCFC	    PCI config	        ----
+ */
+u8 io_read8(IoBus *bus, u16 port) { 
+    IoDevice *d = find(bus, port); 
+    return d && d->read ? d->read(d->opaque, port) : 0xff; 
+}
+void io_write8(IoBus *bus, u16 port, u8 value) { 
+    IoDevice *d = find(bus, port); 
+    if (d && d->write) d->write(d->opaque, port, value); 
+}
