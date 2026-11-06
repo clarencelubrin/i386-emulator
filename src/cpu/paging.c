@@ -46,15 +46,26 @@
 bool cpu_translate_page(CPU *cpu, u32 linear, u32 *physical) { 
     if (!cpu || !physical) return false; 
     u16 offset = (linear & 0x00000FFF);        // 0-11  (12 bits)
-    u16 page   = (linear & 0x002FF000) >> 8;   // 12-21 (10 bits)
-    u16 dir    = (linear & 0xFFC00000) >> 16;  // 22-31 (10 bits)
+    u16 page   = (linear & 0x003FF000) >> 12;  // 12-21 (10 bits)
+    u16 dir    = (linear & 0xFFC00000) >> 22;  // 22-31 (10 bits)
     
-    u32 *pd_entry = (u32*) cpu->cr3 + dir;
-    if (pd_entry == NULL) return false;
+    u32 pde_addr = (cpu->cr3 & 0xfffff000) + dir * 4;
+    u32 pde;
+    // Read memory from pde_addr
+    if (!cpu->memory || !mem_read(cpu->memory, pde_addr, &pde, sizeof(pde))) return false;
+    if (!(pde & 1)) return false;   // Check present bit
+    /**
+     * TODO: For PDE. 
+     * - Check U/S againts CPL (ring 3=user)
+     * - check R/W for writes (supervisor honors it only if CR0.WP=1)
+     * - Set accessed (and Dirty on write)
+     */
 
-    u32 *pt_entry = (u32*) (*pd_entry >> 12) + page;
-    if (pt_entry == NULL) return false;
+    u32 pte_addr = (pde & 0xfffff000) + page * 4;
+    u32 pte;
+    if (!mem_read(cpu->memory, pte_addr, &pte, sizeof(pte))) return false;
+    if (!(pte & 1)) return false;   // Check present bit
+    *physical = (pte & 0xfffff000) | offset;
 
-    *physical = (*pt_entry >> 12) + offset;
     return true;
 }

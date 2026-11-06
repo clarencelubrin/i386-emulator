@@ -9,6 +9,16 @@
 #include "mem/mem.h"
 #include "io/io.h"
 
+// segment register encoding
+typedef enum {
+  SEG_REG_ES = 0,   // Data segment
+  SEG_REG_CS = 1,   // Code segment
+  SEG_REG_SS = 2,   // Stack segment
+  SEG_REG_DS = 3,   // Data segment
+  SEG_REG_FS = 4,   // Data segment
+  SEG_REG_GS = 5,   // Data segment
+} SegmentIdx;
+
 typedef union { 
     u32 r32;                    // 32-bits register
     u16 r16;                    // 16-bits register
@@ -20,10 +30,10 @@ typedef struct {
     u16 selector;               // holds the location of the segment descriptor
     // Hidden descriptors
     u32 base, limit;            // base and limit of the segment descriptor table
-    u8 type, dpl, present, db, g;
+    u8 type, dpl, present, db, g, s, valid;
 } Segment;
 
-typedef struct CPU {
+typedef struct {
     Register r[8];              // General-purpose registers
     u32 eip, eip_start;         // Instruction register
     u32 eflags;                 // Flag register
